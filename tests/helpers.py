@@ -30,8 +30,11 @@ class FakeMsvcrt(object):
 if platform.python_version() < '3.0':
     reload = reload
 else:
-    import imp
-    reload = imp.reload
+    try:
+        from importlib import reload
+    except ImportError:
+        import imp
+        reload = imp.reload
 
 
 # used by sys.exit mocks

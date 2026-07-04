@@ -162,7 +162,7 @@ class TestGame(unittest.TestCase):
         g2 = Game(scores_file=None, store_file=store.name)
         g2.board.setCell(0, 0, 16)
         self.assertTrue(g2.restore())
-        self.assertIn(g2.board.getCell(0, 0), [0, 2, 4])
+        self.assertEqual(g2.board.cells, g1.board.cells)
         remove(store.name)
 
     def test_restore_fail_return_false(self):
@@ -266,7 +266,7 @@ class TestGame(unittest.TestCase):
 
     def test_loop_interrupt(self):
         kp._setCtrlC(True)
-        g = Game(goal=4, size=2, scores_file=None)
+        g = Game(goal=4, size=2, blockers=0, scores_file=None)
         self.assertEqual(g.loop(), None)
 
     def test_loop_pause(self):
@@ -292,12 +292,12 @@ class TestGame(unittest.TestCase):
 
     def test_getCellStr_0(self):
         self.b.setCell(0, 0, 0)
-        self.assertEqual(self.g.getCellStr(0, 0), '  .')
+        self.assertEqual(self.g.getCellStr(0, 0), '   .')
 
     def test_getCellStr_unknown_number(self):
         self.b.setCell(0, 0, 42)
         self.assertEqual(self.g.getCellStr(0, 0),
-                         '%s 42%s' % (Fore.RESET, Style.RESET_ALL))
+                         '%s  42%s' % (Fore.RESET, Style.RESET_ALL))
 
     def test_getCellStr_0_azmode(self):
         g = Game(azmode=True)
@@ -307,22 +307,52 @@ class TestGame(unittest.TestCase):
     def test_getCellStr_2(self):
         g = Game()
         g.board.setCell(0, 0, 2)
-        self.assertRegexpMatches(g.getCellStr(0, 0), r'  2\x1b\[0m$')
+        self.assertRegex(g.getCellStr(0, 0), r'   2\x1b\[0m$')
+
+    def test_getCellStr_negative_2(self):
+        g = Game()
+        g.board.setCell(0, 0, -2)
+        self.assertRegex(g.getCellStr(0, 0), r'  -2\x1b\[0m$')
+
+    def test_getCellStr_negative_has_own_color(self):
+        g = Game()
+        g.board.setCell(0, 0, 2)
+        g.board.setCell(1, 0, -2)
+        pos = g.getCellStr(0, 0)
+        neg = g.getCellStr(1, 0)
+        # strip the numeric payload; the color prefix must differ
+        self.assertNotEqual(pos.split('2')[0], neg.split('2')[0])
+        self.assertIn(Fore.RED + Style.BRIGHT, neg)
+
+    def test_getCellStr_blocker(self):
+        g = Game()
+        g.board.setCell(0, 0, Board.BLOCKER)
+        self.assertRegex(g.getCellStr(0, 0), r'   X\x1b\[0m$')
 
     def test_getCellStr_1k(self):
         g = Game()
         g.board.setCell(0, 0, 1024)
-        self.assertRegexpMatches(g.getCellStr(0, 0), r' 1k\x1b\[0m$')
+        self.assertRegex(g.getCellStr(0, 0), r'  1k\x1b\[0m$')
 
     def test_getCellStr_2k(self):
         g = Game()
         g.board.setCell(0, 0, 2048)
-        self.assertRegexpMatches(g.getCellStr(0, 0), r' 2k\x1b\[0m$')
+        self.assertRegex(g.getCellStr(0, 0), r'  2k\x1b\[0m$')
 
     def test_getCellStr_2_azmode(self):
         g = Game(azmode=True)
         g.board.setCell(0, 0, 2)
-        self.assertRegexpMatches(g.getCellStr(0, 0), r'a\x1b\[0m$')
+        self.assertRegex(g.getCellStr(0, 0), r'a\x1b\[0m$')
+
+    def test_getCellStr_negative_2_azmode(self):
+        g = Game(azmode=True)
+        g.board.setCell(0, 0, -2)
+        self.assertRegex(g.getCellStr(0, 0), r'A\x1b\[0m$')
+
+    def test_getCellStr_blocker_azmode(self):
+        g = Game(azmode=True)
+        g.board.setCell(0, 0, Board.BLOCKER)
+        self.assertRegex(g.getCellStr(0, 0), r'X\x1b\[0m$')
 
     def test_getCellStr_unknown_number_azmode(self):
         g = Game(azmode=True)
@@ -333,10 +363,10 @@ class TestGame(unittest.TestCase):
 
     def test_boardToString_height_no_margins(self):
         s = self.g.boardToString()
-        self.assertEqual(len(s.split("\n")), self.b.size())
+        self.assertEqual(len(s.split("\n")), self.b.height())
 
     # == .__str__ == #
 
     def test_str_height_no_margins(self):
         s = str(self.g)
-        self.assertEqual(len(s.split("\n")), self.b.size())
+        self.assertEqual(len(s.split("\n")), self.b.height())

@@ -142,7 +142,7 @@ class TestUI(unittest.TestCase):
         else:
             self.assertFalse(True, "should exit after printing the version")
         self.assertEqual(self.exit_status, 0)
-        self.assertRegexpMatches(self.output.read(),
+        self.assertRegex(self.output.read(),
                                  r'^term2048 v\d+\.\d+\.\d+$')
 
     def test_start_game_print_version_over_rules(self):
@@ -154,7 +154,7 @@ class TestUI(unittest.TestCase):
         else:
             self.assertFalse(True, "should exit after printing the version")
         self.assertEqual(self.exit_status, 0)
-        self.assertRegexpMatches(self.output.read(),
+        self.assertRegex(self.output.read(),
                                  r'^term2048 v\d+\.\d+\.\d+$')
 
     def test_start_game_print_rules(self):
@@ -166,7 +166,7 @@ class TestUI(unittest.TestCase):
         else:
             self.assertFalse(True, "should exit after printing the version")
         self.assertEqual(self.exit_status, 0)
-        self.assertRegexpMatches(self.output.read(), r'.+')
+        self.assertRegex(self.output.read(), r'.+')
 
     def test_start_game_loop(self):
         sys.argv = ['term2048']
@@ -181,7 +181,9 @@ class TestUI(unittest.TestCase):
 
         sys.argv = ['term2048']
         g2 = ui.start_game(debug=True)
-        self.assertIn(g2.board.getCell(0, 0), [0, 2, 4])
+        # a fresh board can contain 0, +/-2, +/-4 or a blocker at (0,0) but
+        # never the 16 we stored, since we didn't pass --resume
+        self.assertNotEqual(g2.board.getCell(0, 0), 16)
 
     def test_start_game_resume(self):
         cellvalue = 2

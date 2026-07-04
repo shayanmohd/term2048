@@ -149,11 +149,11 @@ class Game(object):
         """
         save the current game session's score and data for further use
         """
-        size = self.board.SIZE
+        w, h = self.board.width(), self.board.height()
         cells = []
 
-        for i in range(size):
-            for j in range(size):
+        for i in range(h):
+            for j in range(w):
                 cells.append(str(self.board.getCell(j, i)))
 
         score_str = "%s\n%d" % (' '.join(cells), self.score)
@@ -170,7 +170,7 @@ class Game(object):
         restore the saved game score and data
         """
 
-        size = self.board.SIZE
+        w, h = self.board.width(), self.board.height()
 
         try:
             with open(self.store_file, 'r') as f:
@@ -183,10 +183,13 @@ class Game(object):
         score_str_list = score_str.split(' ')
         count = 0
 
-        for i in range(size):
-            for j in range(size):
+        for i in range(h):
+            for j in range(w):
                 value = score_str_list[count]
-                self.board.setCell(j, i, int(value))
+                if value.strip() == Board.BLOCKER:
+                    self.board.setCell(j, i, Board.BLOCKER)
+                else:
+                    self.board.setCell(j, i, int(value))
                 count += 1
 
         return True
@@ -258,25 +261,39 @@ class Game(object):
         """
         c = self.board.getCell(x, y)
 
-        if c == 0:
-            return '.' if self.__azmode else '  .'
+        if c == Board.BLOCKER:
+            if self.__azmode:
+                return Fore.WHITE + Style.BRIGHT + 'X' + Style.RESET_ALL
+            return Fore.WHITE + Style.BRIGHT + '   X' + Style.RESET_ALL
 
-        elif self.__azmode:
+        if c == 0:
+            return '.' if self.__azmode else '   .'
+
+        av = abs(c)
+
+        if self.__azmode:
             az = {}
             for i in range(1, int(math.log(self.board.goal(), 2))):
                 az[2 ** i] = chr(i + 96)
 
-            if c not in az:
+            if av not in az:
                 return '?'
-            s = az[c]
-        elif c == 1024:
-            s = ' 1k'
-        elif c == 2048:
-            s = ' 2k'
+            # uppercase letter denotes an anti-matter tile
+            s = az[av].upper() if c < 0 else az[av]
+        elif av == 1024:
+            s = ' -1k' if c < 0 else '  1k'
+        elif av == 2048:
+            s = ' -2k' if c < 0 else '  2k'
         else:
-            s = '%3d' % c
+            s = '%4d' % c
 
-        return self.__colors.get(c, Fore.RESET) + s + Style.RESET_ALL
+        if c < 0:
+            # anti-matter tiles get a single dedicated color so they stand
+            # out from their positive counterparts
+            color = Fore.RED + Style.BRIGHT
+        else:
+            color = self.__colors.get(av, Fore.RESET)
+        return color + s + Style.RESET_ALL
 
     def boardToString(self, margins=None):
         """
@@ -286,10 +303,11 @@ class Game(object):
             margins = {}
 
         b = self.board
-        rg = range(b.size())
         left = ' '*margins.get('left', 0)
         s = '\n'.join(
-            [left + ' '.join([self.getCellStr(x, y) for x in rg]) for y in rg])
+            [left + ' '.join(
+                [self.getCellStr(x, y) for x in range(b.width())])
+             for y in range(b.height())])
         return s
 
     def __str__(self, margins=None):
